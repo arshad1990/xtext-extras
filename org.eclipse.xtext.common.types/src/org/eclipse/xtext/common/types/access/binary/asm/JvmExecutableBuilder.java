@@ -233,17 +233,34 @@ public class JvmExecutableBuilder extends MethodVisitor implements Opcodes {
 		};
     }
 
-    @Override
-	public AnnotationVisitor visitParameterAnnotation(
-        final int parameter,
-        final String desc,
-        final boolean visible)
-    {
-    	if (parameter < offset)
-    		return null;
-    	JvmFormalParameter formalParameter = result.getParameters().get(parameter - offset);
-    	return new JvmAnnotationReferenceBuilder((InternalEList<JvmAnnotationReference>) formalParameter.getAnnotations(), desc, proxies);
-    }
+	private static final boolean ASM_611_AVAILABLE = isAsm611Available();
+
+	private static boolean isAsm611Available() {
+		try {
+			if (Opcodes.class.getDeclaredField("V10") != null)
+				return true;
+		} catch (NoClassDefFoundError e) {
+		} catch (NoSuchFieldException e) {
+		}
+		return false;
+	}
+    
+	//TODO analyze why this has changed
+	@Override
+	public AnnotationVisitor visitParameterAnnotation(final int parameter, final String desc, final boolean visible) {
+		if (ASM_611_AVAILABLE) {
+			JvmFormalParameter formalParameter = result.getParameters().get(parameter);
+			return new JvmAnnotationReferenceBuilder(
+					(InternalEList<JvmAnnotationReference>) formalParameter.getAnnotations(), desc, proxies);
+		} else {
+			if (parameter < offset)
+				return null;
+			JvmFormalParameter formalParameter = result.getParameters().get(parameter - offset);
+			return new JvmAnnotationReferenceBuilder(
+					(InternalEList<JvmAnnotationReference>) formalParameter.getAnnotations(), desc, proxies);
+
+		}
+	}
 
     @Override
 	public void visitCode() {
